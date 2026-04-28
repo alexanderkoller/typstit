@@ -15,7 +15,6 @@ struct ContentView: View {
 
                 PDFPreviewView(pdfData: model.pdfData)
                     .frame(minHeight: 80)
-                    .background(Color(nsColor: .controlBackgroundColor))
             }
 
             Divider()

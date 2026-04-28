@@ -22,6 +22,12 @@ struct TypstitApp: App {
         }
         .commands {
             CommandGroup(replacing: .newItem) { }
+            CommandGroup(after: .pasteboard) {
+                Button("Paste Typst Source") {
+                    model.pasteTypstSource()
+                }
+                .keyboardShortcut("v", modifiers: [.command, .shift])
+            }
             CommandMenu("Typeset") {
                 Button("Typeset") {
                     Task { await model.typeset() }

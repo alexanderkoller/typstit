@@ -1,4 +1,5 @@
 import SwiftUI
+import PDFKit
 
 @MainActor
 class AppModel: ObservableObject {
@@ -66,6 +67,40 @@ class AppModel: ObservableObject {
             statusIsError = true
         }
         isCompiling = false
+    }
+
+    func pasteTypstSource() {
+        let pb = NSPasteboard.general
+        guard let data = pb.data(forType: .pdf) ?? pb.data(forType: NSPasteboard.PasteboardType("com.adobe.pdf")),
+              let document = PDFDocument(data: data),
+              let pageText = document.page(at: 0)?.string else {
+            statusMessage = "No PDF found in clipboard"
+            statusIsError = true
+            return
+        }
+
+        let prefix = Preamble.sourceKeyword
+        guard let markerRange = pageText.range(of: prefix) else {
+            statusMessage = "No Typstit source found in clipboard PDF"
+            statusIsError = true
+            return
+        }
+        // Collect base64 chars up to the '!' terminator; strip any spaces/newlines Keynote may insert.
+        let tail = pageText[markerRange.upperBound...]
+        let base64Chars = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=")
+            .union(.whitespacesAndNewlines)
+        let rawB64 = String(tail.unicodeScalars.prefix(while: { base64Chars.contains($0) }))
+        let base64 = rawB64.filter { !$0.isWhitespace }
+
+        guard let sourceData = Data(base64Encoded: base64),
+              let recovered = String(data: sourceData, encoding: .utf8) else {
+            statusMessage = "Decode failed. raw=«\(String(tail.prefix(80)))»"
+            statusIsError = true
+            return
+        }
+        source = recovered
+        statusMessage = "Source restored from PDF"
+        statusIsError = false
     }
 
     func scheduleAutoCompile() {

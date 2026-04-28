@@ -39,15 +39,33 @@ struct CodeEditorView: NSViewRepresentable {
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? NSTextView else { return }
+
+        if !context.coordinator.didFocus {
+            context.coordinator.didFocus = true
+            DispatchQueue.main.async {
+                textView.window?.makeFirstResponder(textView)
+            }
+        }
+
         if textView.string != text {
             let selectedRanges = textView.selectedRanges
             textView.string = text
             textView.selectedRanges = selectedRanges
+            if let storage = textView.textStorage {
+                storage.beginEditing()
+                SyntaxHighlighter.highlight(storage)
+                storage.endEditing()
+                textView.typingAttributes = [
+                    .font: NSFont.monospacedSystemFont(ofSize: 13, weight: .regular),
+                    .foregroundColor: NSColor.labelColor,
+                ]
+            }
         }
     }
 
     class Coordinator: NSObject, NSTextViewDelegate {
         var parent: CodeEditorView
+        var didFocus = false
 
         init(_ parent: CodeEditorView) {
             self.parent = parent
