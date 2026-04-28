@@ -47,7 +47,7 @@ brew install typst
 
 ### Download
 
-Download the latest `Typstit.app` from the [Releases](../../releases) page, drag it to `/Applications/`, and right-click → Open on first launch to bypass Gatekeeper.
+Download `Typstit.zip` from the [Releases](../../releases) page, unzip it, drag `Typstit.app` to `/Applications/`, and right-click → Open on first launch to bypass Gatekeeper.
 
 ### Build from source
 
