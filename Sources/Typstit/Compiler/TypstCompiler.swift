@@ -16,6 +16,20 @@ actor TypstCompiler {
     }
 
     func checkAvailability() async -> Bool {
+        // GUI apps launched from Finder get a minimal PATH that excludes Homebrew.
+        // Probe known locations before falling back to `which`.
+        let candidates = [
+            "/opt/homebrew/bin/typst",  // Apple Silicon Homebrew
+            "/usr/local/bin/typst",     // Intel Homebrew
+            "/usr/bin/typst",
+        ]
+        for path in candidates {
+            if FileManager.default.isExecutableFile(atPath: path) {
+                typstPath = path
+                return true
+            }
+        }
+        // Fall back to `which` for custom installs (works when launched from terminal).
         let result = await runProcess(executable: "/usr/bin/env", arguments: ["which", "typst"])
         let path = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !path.isEmpty else { return false }

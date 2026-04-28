@@ -41,7 +41,8 @@ class HistoryStore: ObservableObject {
 
     func thumbnail(for entry: HistoryEntry) async -> NSImage? {
         let url = entryDir(for: entry.id).appendingPathComponent("output.pdf")
-        return await Task.detached(priority: .utility) {
+        // Return Data instead of NSImage across the task boundary — Data is Sendable on all targets.
+        guard let tiff = await Task.detached(priority: .utility, operation: { () -> Data? in
             guard let data = try? Data(contentsOf: url),
                   let doc = PDFDocument(data: data),
                   let page = doc.page(at: 0) else { return nil }
@@ -50,8 +51,9 @@ class HistoryStore: ObservableObject {
             let maxDim: CGFloat = 240
             let scale = min(maxDim / rect.width, maxDim / rect.height)
             return page.thumbnail(of: CGSize(width: rect.width * scale, height: rect.height * scale),
-                                  for: .mediaBox)
-        }.value
+                                  for: .mediaBox).tiffRepresentation
+        }).value else { return nil }
+        return NSImage(data: tiff)
     }
 
     private func entryDir(for id: UUID) -> URL {
