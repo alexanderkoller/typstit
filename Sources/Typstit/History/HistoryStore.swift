@@ -4,16 +4,9 @@ import PDFKit
 @MainActor
 class HistoryStore: ObservableObject {
 
-    static let appSupportURL: URL = {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let dir = base.appendingPathComponent("Typstit")
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir
-    }()
-
     @Published private(set) var entries: [HistoryEntry] = []
 
-    private var historyDir: URL { Self.appSupportURL.appendingPathComponent("history") }
+    private var historyDir: URL { AppDirectories.appSupport.appendingPathComponent("history") }
 
     init() {
         try? FileManager.default.createDirectory(at: historyDir, withIntermediateDirectories: true)

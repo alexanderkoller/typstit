@@ -6,14 +6,6 @@ struct CompileError: Error {
 
 actor TypstCompiler {
     private var typstPath: String?
-    private let tempDir: URL
-
-    init() {
-        let uuid = UUID().uuidString
-        tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("typstit-\(uuid)")
-        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-    }
 
     func checkAvailability() async -> Bool {
         // GUI apps launched from Finder get a minimal PATH that excludes Homebrew.
@@ -42,15 +34,19 @@ actor TypstCompiler {
             throw CompileError(stderr: "typst not found on $PATH")
         }
 
-        let inputURL = tempDir.appendingPathComponent("input.typ")
-        let outputURL = tempDir.appendingPathComponent("output.pdf")
+        // Use the stable workspace directory as cwd so snippets can reference
+        // local files (CSV, images, etc.) with relative paths.
+        let workspace  = AppDirectories.workspace
+        let inputURL   = workspace.appendingPathComponent("input.typ")
+        let outputURL  = workspace.appendingPathComponent("output.pdf")
 
         let wrapped = Preamble.wrap(source, font: font, size: size, colorHex: colorHex)
         try wrapped.write(to: inputURL, atomically: true, encoding: .utf8)
 
         let result = await runProcess(
             executable: typstPath,
-            arguments: ["compile", inputURL.path, outputURL.path]
+            arguments:  ["compile", inputURL.path, outputURL.path],
+            cwd:        workspace
         )
 
         guard result.exitCode == 0 else {
@@ -69,16 +65,18 @@ actor TypstCompiler {
         let stderr: String
     }
 
-    private func runProcess(executable: String, arguments: [String]) async -> ProcessResult {
+    private func runProcess(executable: String, arguments: [String],
+                            cwd: URL? = nil) async -> ProcessResult {
         await withCheckedContinuation { continuation in
             let process = Process()
             process.executableURL = URL(fileURLWithPath: executable)
             process.arguments = arguments
+            if let cwd = cwd { process.currentDirectoryURL = cwd }
 
             let outPipe = Pipe()
             let errPipe = Pipe()
             process.standardOutput = outPipe
-            process.standardError = errPipe
+            process.standardError  = errPipe
 
             process.terminationHandler = { p in
                 let out = String(data: outPipe.fileHandleForReading.readDataToEndOfFile(),
@@ -93,7 +91,8 @@ actor TypstCompiler {
             do {
                 try process.run()
             } catch {
-                continuation.resume(returning: ProcessResult(exitCode: -1, stdout: "", stderr: error.localizedDescription))
+                continuation.resume(returning: ProcessResult(exitCode: -1, stdout: "",
+                                                             stderr: error.localizedDescription))
             }
         }
     }
