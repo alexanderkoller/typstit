@@ -3,8 +3,6 @@ import AppKit
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // When launched via `swift run` the process starts as an accessory;
-        // promoting to .regular gives it a Dock icon, a menu bar, and keyboard focus.
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -19,6 +17,7 @@ struct TypstitApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(model)
+                .environmentObject(model.historyStore)
         }
         .commands {
             CommandGroup(replacing: .newItem) { }
@@ -34,7 +33,28 @@ struct TypstitApp: App {
                 }
                 .keyboardShortcut("t", modifiers: .command)
                 .disabled(!model.typstAvailable || model.isCompiling)
+
+                Toggle("Auto", isOn: $model.autoCompile)
+                    .keyboardShortcut("t", modifiers: [.command, .shift])
+            }
+            CommandMenu("History") {
+                ShowHistoryButton()
             }
         }
+
+        Window("History", id: "history") {
+            HistoryView()
+                .environmentObject(model)
+                .environmentObject(model.historyStore)
+        }
+        .defaultSize(width: 640, height: 500)
+    }
+}
+
+private struct ShowHistoryButton: View {
+    @Environment(\.openWindow) private var openWindow
+    var body: some View {
+        Button("Show History") { openWindow(id: "history") }
+            .keyboardShortcut("h", modifiers: .command)
     }
 }

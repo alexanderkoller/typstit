@@ -3,7 +3,6 @@ import AppKit
 
 struct CodeEditorView: NSViewRepresentable {
     @Binding var text: String
-    var onChange: () -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -83,7 +82,6 @@ struct CodeEditorView: NSViewRepresentable {
                 .foregroundColor: NSColor.labelColor,
             ]
             parent.text = textView.string
-            parent.onChange()
         }
     }
 }

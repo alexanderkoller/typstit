@@ -3,7 +3,7 @@ import PDFKit
 
 @MainActor
 class AppModel: ObservableObject {
-    @Published var source: String = ""
+    @Published var source: String = "" { didSet { scheduleAutoCompile() } }
     @Published var pdfData: Data? = nil
     @Published var statusMessage: String = ""
     @Published var statusIsError: Bool = false
@@ -11,9 +11,9 @@ class AppModel: ObservableObject {
     @Published var typstAvailable: Bool = false
     @Published var autoCompile: Bool = false
 
-    @Published var fontName: String = "Libertinus Serif"
-    @Published var fontSize: Double = 36
-    @Published var textColor: Color = .black
+    @Published var fontName: String = "Libertinus Serif" { didSet { scheduleAutoCompile() } }
+    @Published var fontSize: Double = 36                 { didSet { scheduleAutoCompile() } }
+    @Published var textColor: Color = .black             { didSet { scheduleAutoCompile() } }
 
     // Fonts bundled inside the typst binary — available for compilation even if not
     // installed as system fonts (so NSFontManager won't list them).
@@ -30,6 +30,7 @@ class AppModel: ObservableObject {
         return bundledOnly + system
     }()
 
+    let historyStore = HistoryStore()
     private let compiler = TypstCompiler()
     private var autoCompileTask: Task<Void, Never>? = nil
 
@@ -56,6 +57,8 @@ class AppModel: ObservableObject {
                 colorHex: colorHex
             )
             pdfData = data
+            historyStore.add(source: source, pdfData: data,
+                             fontName: fontName, fontSize: fontSize, colorHex: colorHex)
             let elapsed = Date().timeIntervalSince(start)
             statusMessage = String(format: "Compiled in %.2fs", elapsed)
             statusIsError = false

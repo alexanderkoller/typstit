@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var model: AppModel
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(spacing: 0) {
@@ -10,7 +11,7 @@ struct ContentView: View {
             Divider()
 
             VSplitView {
-                CodeEditorView(text: $model.source, onChange: { model.scheduleAutoCompile() })
+                CodeEditorView(text: $model.source)
                     .frame(minHeight: 80)
 
                 PDFPreviewView(pdfData: model.pdfData)
@@ -42,14 +43,12 @@ struct ContentView: View {
             }
             .labelsHidden()
             .frame(width: 170)
-            .onChange(of: model.fontName) { _ in model.scheduleAutoCompile() }
 
             HStack(spacing: 2) {
                 TextField("pt", value: $model.fontSize, format: .number)
                     .frame(width: 44)
                     .textFieldStyle(.roundedBorder)
                     .multilineTextAlignment(.trailing)
-                    .onChange(of: model.fontSize) { _ in model.scheduleAutoCompile() }
                 Stepper("", value: $model.fontSize, in: 4...288, step: 1)
                     .labelsHidden()
             }
@@ -57,9 +56,13 @@ struct ContentView: View {
             ColorPicker("Color", selection: $model.textColor)
                 .labelsHidden()
                 .frame(width: 32)
-                .onChange(of: model.textColor) { _ in model.scheduleAutoCompile() }
 
             Spacer()
+
+            Button(action: { openWindow(id: "history") }) {
+                Image(systemName: "clock")
+            }
+            .help("Show History (⌘H)")
 
             if model.isCompiling {
                 ProgressView()
