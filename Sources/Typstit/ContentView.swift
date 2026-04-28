@@ -62,7 +62,7 @@ struct ContentView: View {
             Button(action: { openWindow(id: "history") }) {
                 Image(systemName: "clock")
             }
-            .help("Show History (⌘H)")
+            .help("Show History (⌘Y)")
 
             if model.isCompiling {
                 ProgressView()

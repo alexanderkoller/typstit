@@ -55,6 +55,6 @@ private struct ShowHistoryButton: View {
     @Environment(\.openWindow) private var openWindow
     var body: some View {
         Button("Show History") { openWindow(id: "history") }
-            .keyboardShortcut("h", modifiers: .command)
+            .keyboardShortcut("y", modifiers: .command)
     }
 }
