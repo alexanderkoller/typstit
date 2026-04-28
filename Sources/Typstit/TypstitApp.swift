@@ -3,6 +3,7 @@ import AppKit
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSWindow.allowsAutomaticWindowTabbing = false
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -37,7 +38,8 @@ struct TypstitApp: App {
                 Toggle("Auto", isOn: $model.autoCompile)
                     .keyboardShortcut("t", modifiers: [.command, .shift])
             }
-            CommandMenu("History") {
+            CommandGroup(after: .windowList) {
+                Divider()
                 ShowHistoryButton()
             }
         }
@@ -48,13 +50,14 @@ struct TypstitApp: App {
                 .environmentObject(model.historyStore)
         }
         .defaultSize(width: 640, height: 500)
+        .commandsRemoved()
     }
 }
 
 private struct ShowHistoryButton: View {
     @Environment(\.openWindow) private var openWindow
     var body: some View {
-        Button("Show History") { openWindow(id: "history") }
+        Button("History") { openWindow(id: "history") }
             .keyboardShortcut("y", modifiers: .command)
     }
 }
