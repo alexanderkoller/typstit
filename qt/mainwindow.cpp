@@ -3,6 +3,8 @@
 #include "compiler.h"
 #include "highlighter.h"
 #include "preamble.h"
+#include "history.h"
+#include "historywindow.h"
 
 #include <QPlainTextEdit>
 #include <QSplitter>
@@ -46,6 +48,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     setupWorkspace();
 
+    m_store    = new HistoryStore(this);
     m_pdfDoc   = new QPdfDocument(this);
     m_compiler = new Compiler(this);
 
@@ -229,6 +232,22 @@ QWidget *MainWindow::buildToolbar()
 
     h->addStretch();
 
+    m_historyBtn = new QToolButton();
+    m_historyBtn->setText("⏱");
+    m_historyBtn->setFixedSize(30, 26);
+    m_historyBtn->setAutoRaise(true);
+    m_historyBtn->setToolTip("History");
+    connect(m_historyBtn, &QToolButton::clicked, this, [this] {
+        auto *win = new HistoryWindow(m_store, this);
+        connect(win, &HistoryWindow::restoreRequested,
+                this, [this](const HistoryEntry &e) { restoreEntry(e, false); });
+        connect(win, &HistoryWindow::restoreAndCompileRequested,
+                this, [this](const HistoryEntry &e) { restoreEntry(e, true); });
+        win->setAttribute(Qt::WA_DeleteOnClose);
+        win->show();
+    });
+    addC(m_historyBtn);
+
     return bar;
 }
 
@@ -306,6 +325,10 @@ void MainWindow::onCompileFinished(const QByteArray &pdfData, qint64 elapsedMs)
     m_preview->setTempFilePath(m_outputPath);
     m_preview->refresh();
 
+    // Persist to history
+    QString colorHex = m_textColor.name(QColor::HexRgb).mid(1); // strip '#'
+    m_store->add(m_editor->toPlainText(), pdfData, m_fontName, m_fontSize, colorHex);
+
     setStatus(QString("Compiled in %1s").arg(elapsedMs / 1000.0, 0, 'f', 2));
 }
 
@@ -371,4 +394,30 @@ void MainWindow::pasteBack()
 
     m_editor->setPlainText(QString::fromUtf8(decoded));
     setStatus("Source restored from PDF");
+}
+
+// ── History restore ───────────────────────────────────────────────────────────
+
+void MainWindow::restoreEntry(const HistoryEntry &entry, bool compile)
+{
+    // Restore text
+    m_editor->setPlainText(entry.source);
+
+    // Restore font
+    if (!entry.fontName.isEmpty()) {
+        m_fontName = entry.fontName;
+        m_fontCombo->setCurrentText(entry.fontName);
+    }
+
+    // Restore size
+    m_fontSize = entry.fontSize;
+    m_sizeBox->setValue(entry.fontSize);
+
+    // Restore color
+    if (!entry.colorHex.isEmpty()) {
+        m_textColor = QColor("#" + entry.colorHex);
+        updateColorBtn();
+    }
+
+    if (compile) triggerTypeset();
 }

@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Pdf PdfWidgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Pdf PdfWidgets Concurrent)
 
 qt_add_executable(typstit
     main.cpp
@@ -21,6 +21,10 @@ qt_add_executable(typstit
     preamble.h
     clipboard_mac.h
     clipboard_mac.mm
+    history.cpp
+    history.h
+    historywindow.cpp
+    historywindow.h
 )
 
 qt_add_resources(typstit "app_resources"
@@ -33,6 +37,7 @@ target_link_libraries(typstit PRIVATE
     Qt6::Widgets
     Qt6::Pdf
     Qt6::PdfWidgets
+    Qt6::Concurrent
 )
 
 if(APPLE)

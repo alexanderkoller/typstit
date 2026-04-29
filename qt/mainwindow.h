@@ -14,6 +14,8 @@ class PreviewWidget;
 class QPdfDocument;
 class Compiler;
 class SyntaxHighlighter;
+class HistoryStore;
+class HistoryEntry;
 
 class MainWindow : public QMainWindow
 {
@@ -32,6 +34,7 @@ private:
     QComboBox        *m_fontCombo   = nullptr;
     QSpinBox         *m_sizeBox     = nullptr;
     QToolButton      *m_colorBtn    = nullptr;
+    QToolButton      *m_historyBtn  = nullptr;
 
     // State
     QString   m_fontName   = "Libertinus Serif";
@@ -39,6 +42,9 @@ private:
     QColor    m_textColor  = Qt::black;
     QString   m_workspace;
     QString   m_outputPath;
+
+    // History
+    HistoryStore      *m_store         = nullptr;
 
     // Compiler
     Compiler          *m_compiler      = nullptr;
@@ -57,4 +63,5 @@ private:
     void     pasteBack();
     void     updateColorBtn();
     void     setStatus(const QString &msg, bool error = false);
+    void     restoreEntry(const HistoryEntry &entry, bool compile);
 };
