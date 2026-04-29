@@ -4,6 +4,7 @@ import PDFKit
 struct HistoryView: View {
     @EnvironmentObject var model: AppModel
     @EnvironmentObject var store: HistoryStore
+    @Environment(\.dismiss) private var dismiss
 
     private let columns = [GridItem(.adaptive(minimum: 160, maximum: 220), spacing: 12)]
 
@@ -23,9 +24,11 @@ struct HistoryView: View {
                     LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(store.entries) { entry in
                             HistoryCell(entry: entry)
-                                .onTapGesture { restore(entry) }
+                                .onTapGesture(count: 2) { restoreAndCompile(entry) }
+                                .onTapGesture(count: 1) { restore(entry) }
                                 .contextMenu {
                                     Button("Restore") { restore(entry) }
+                                    Button("Open and Compile") { restoreAndCompile(entry) }
                                     Divider()
                                     Button("Delete", role: .destructive) { store.remove(entry) }
                                 }
@@ -51,6 +54,12 @@ struct HistoryView: View {
         model.fontName = entry.fontName
         model.fontSize = entry.fontSize
         model.textColor = Color(hex: entry.colorHex)
+    }
+
+    private func restoreAndCompile(_ entry: HistoryEntry) {
+        restore(entry)
+        dismiss()
+        Task { await model.typeset() }
     }
 }
 

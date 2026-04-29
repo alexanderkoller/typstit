@@ -3,7 +3,7 @@ set -euo pipefail
 
 APP_NAME="Typstit"
 BUNDLE_ID="com.typstit.app"
-VERSION="1.0"
+VERSION="1.1"
 APP_DIR="${APP_NAME}.app"
 
 echo "==> Building release binary..."

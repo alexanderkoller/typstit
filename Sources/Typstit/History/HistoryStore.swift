@@ -15,7 +15,7 @@ class HistoryStore: ObservableObject {
 
     func add(source: String, pdfData: Data, fontName: String, fontSize: Double, colorHex: String) {
         let trimmed = source.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard entries.first?.source.trimmingCharacters(in: .whitespacesAndNewlines) != trimmed else { return }
+        guard !entries.contains(where: { $0.source.trimmingCharacters(in: .whitespacesAndNewlines) == trimmed }) else { return }
 
         let entry = HistoryEntry(id: UUID(), date: Date(), source: source,
                                  fontName: fontName, fontSize: fontSize, colorHex: colorHex)
