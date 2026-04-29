@@ -6,6 +6,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSWindow.allowsAutomaticWindowTabbing = false
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
+        if let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+           let icon = NSImage(contentsOf: url) {
+            NSApp.applicationIconImage = icon
+        }
     }
 }
 
@@ -21,6 +25,22 @@ struct TypstitApp: App {
                 .environmentObject(model.historyStore)
         }
         .commands {
+            CommandGroup(replacing: .appInfo) {
+                Button("About Typstit") {
+                    let credits = NSMutableAttributedString(
+                        string: "github.com/alexanderkoller/typstit",
+                        attributes: [
+                            .link: URL(string: "https://github.com/alexanderkoller/typstit")!,
+                            .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+                        ]
+                    )
+                    NSApp.orderFrontStandardAboutPanel(options: [
+                        .credits: credits,
+                        .applicationIcon: NSApp.applicationIconImage as Any,
+                        .version: ""
+                    ])
+                }
+            }
             CommandGroup(replacing: .newItem) { }
             CommandGroup(after: .pasteboard) {
                 Button("Paste Typst Source") {

@@ -55,7 +55,7 @@ Download `Typstit.zip` from the [Releases](../../releases) page, unzip it, and d
 ### Build from source
 
 ```sh
-git clone https://github.com/yourusername/typstit
+git clone https://github.com/alexanderkoller/typstit
 cd typstit
 bash build-app.sh
 ```

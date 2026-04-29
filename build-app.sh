@@ -52,6 +52,8 @@ cat > "$APP_DIR/Contents/Info.plist" << EOF
     <string>NSApplication</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
+    <key>NSHumanReadableCopyright</key>
+    <string>© 2026 Alexander Koller</string>
 </dict>
 </plist>
 EOF
