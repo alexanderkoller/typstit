@@ -47,7 +47,10 @@ brew install typst
 
 ### Download
 
-Download `Typstit.zip` from the [Releases](../../releases) page, unzip it, drag `Typstit.app` to `/Applications/`, and right-click → Open on first launch to bypass Gatekeeper.
+Download `Typstit.zip` from the [Releases](../../releases) page, unzip it, and drag `Typstit.app` to `/Applications/`. Typstit is unsigned because this is a hobby project and I don't want to pay for an Apple Developer license. If MacOS rejects opening the app, go to System Settings -> Privacy & Security -> Security and click on "Open Anyway".
+
+
+
 
 ### Build from source
 
