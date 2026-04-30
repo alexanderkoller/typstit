@@ -3,7 +3,8 @@ import Foundation
 enum Preamble {
     static let sourceKeyword = "TypstitSource="
 
-    static func wrap(_ source: String, font: String, size: Double, colorHex: String) -> String {
+    static func wrap(_ source: String, font: String, size: Double,
+                     colorHex: String, mathFont: String) -> String {
         let sizeStr = size.truncatingRemainder(dividingBy: 1) == 0
             ? "\(Int(size))pt"
             : String(format: "%.1fpt", size)
@@ -19,6 +20,7 @@ enum Preamble {
         return """
         #set page(width: auto, height: auto, margin: 0pt, fill: none)
         #set text(font: "\(font)", size: \(sizeStr), top-edge: "bounds", bottom-edge: "bounds", fill: rgb("\(colorHex)"))
+        #show math.equation: set text(font: "\(mathFont)")
         \(hidden)
 
         """ + source

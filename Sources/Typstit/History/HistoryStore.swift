@@ -13,12 +13,14 @@ class HistoryStore: ObservableObject {
         load()
     }
 
-    func add(source: String, pdfData: Data, fontName: String, fontSize: Double, colorHex: String) {
+    func add(source: String, pdfData: Data, fontName: String, fontSize: Double,
+             colorHex: String, mathFont: String) {
         let trimmed = source.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !entries.contains(where: { $0.source.trimmingCharacters(in: .whitespacesAndNewlines) == trimmed }) else { return }
 
         let entry = HistoryEntry(id: UUID(), date: Date(), source: source,
-                                 fontName: fontName, fontSize: fontSize, colorHex: colorHex)
+                                 fontName: fontName, fontSize: fontSize,
+                                 colorHex: colorHex, mathFont: mathFont)
         let dir = entryDir(for: entry.id)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         try? source.write(to: dir.appendingPathComponent("source.typ"), atomically: true, encoding: .utf8)

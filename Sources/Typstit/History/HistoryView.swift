@@ -30,6 +30,8 @@ struct HistoryView: View {
                                     Button("Restore") { restore(entry) }
                                     Button("Open and Compile") { restoreAndCompile(entry) }
                                     Divider()
+                                    Button("Restore with Original Settings") { restoreWithSettings(entry) }
+                                    Divider()
                                     Button("Delete", role: .destructive) { store.remove(entry) }
                                 }
                         }
@@ -51,9 +53,14 @@ struct HistoryView: View {
 
     private func restore(_ entry: HistoryEntry) {
         model.source = entry.source
+    }
+
+    private func restoreWithSettings(_ entry: HistoryEntry) {
+        model.source = entry.source
         model.fontName = entry.fontName
         model.fontSize = entry.fontSize
         model.textColor = Color(hex: entry.colorHex)
+        model.mathFont = entry.mathFont
     }
 
     private func restoreAndCompile(_ entry: HistoryEntry) {

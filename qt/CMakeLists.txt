@@ -42,7 +42,6 @@ endif()
 
 qt_add_resources(typstit "app_resources"
     PREFIX "/"
-    FILES resources/sample.pdf
 )
 
 target_link_libraries(typstit PRIVATE

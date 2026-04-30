@@ -29,7 +29,8 @@ actor TypstCompiler {
         return true
     }
 
-    func compile(source: String, font: String, size: Double, colorHex: String) async throws -> Data {
+    func compile(source: String, font: String, size: Double,
+                 colorHex: String, mathFont: String) async throws -> Data {
         guard let typstPath = typstPath else {
             throw CompileError(stderr: "typst not found on $PATH")
         }
@@ -40,7 +41,8 @@ actor TypstCompiler {
         let inputURL   = workspace.appendingPathComponent("input.typ")
         let outputURL  = workspace.appendingPathComponent("output.pdf")
 
-        let wrapped = Preamble.wrap(source, font: font, size: size, colorHex: colorHex)
+        let wrapped = Preamble.wrap(source, font: font, size: size,
+                                    colorHex: colorHex, mathFont: mathFont)
         try wrapped.write(to: inputURL, atomically: true, encoding: .utf8)
 
         let result = await runProcess(

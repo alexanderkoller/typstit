@@ -1,5 +1,6 @@
 import SwiftUI
 import PDFKit
+import CoreText
 
 @MainActor
 class AppModel: ObservableObject {
@@ -9,11 +10,12 @@ class AppModel: ObservableObject {
     @Published var statusIsError: Bool = false
     @Published var isCompiling: Bool = false
     @Published var typstAvailable: Bool = false
-    @Published var autoCompile: Bool = false
+    @Published var autoCompile: Bool = true { didSet { if autoCompile { scheduleAutoCompile() } } }
 
-    @Published var fontName: String = "Libertinus Serif" { didSet { scheduleAutoCompile() } }
-    @Published var fontSize: Double = 36                 { didSet { scheduleAutoCompile() } }
-    @Published var textColor: Color = .black             { didSet { scheduleAutoCompile() } }
+    @Published var fontName: String = "Libertinus Serif"          { didSet { scheduleAutoCompile() } }
+    @Published var fontSize: Double = 36                           { didSet { scheduleAutoCompile() } }
+    @Published var textColor: Color = .black                       { didSet { scheduleAutoCompile() } }
+    @Published var mathFont:  String = "New Computer Modern Math"  { didSet { scheduleAutoCompile() } }
 
     // Fonts bundled inside the typst binary — available for compilation even if not
     // installed as system fonts (so NSFontManager won't list them).
@@ -28,6 +30,21 @@ class AppModel: ObservableObject {
         let systemSet = Set(system)
         let bundledOnly = typstBundledFonts.filter { !systemSet.contains($0) }
         return bundledOnly + system
+    }()
+
+    // Fonts that have an OpenType MATH table and are therefore suitable for
+    // typesetting math equations. Typst-bundled math fonts are always listed first
+    // even if not installed system-wide; system fonts with a MATH table follow.
+    static let availableMathFonts: [String] = {
+        let bundled = ["New Computer Modern Math", "Libertinus Math"]
+        let mathTag: CTFontTableTag = 0x4D415448  // 'MATH'
+        let system = NSFontManager.shared.availableFontFamilies.filter { family in
+            let desc = NSFontDescriptor(fontAttributes: [.family: family])
+            guard let font = NSFont(descriptor: desc, size: 12) else { return false }
+            return CTFontCopyTable(font as CTFont, mathTag, []) != nil
+        }.sorted()
+        let systemSet = Set(system)
+        return bundled.filter { !systemSet.contains($0) } + system
     }()
 
     let historyStore = HistoryStore()
@@ -54,11 +71,13 @@ class AppModel: ObservableObject {
                 source: source,
                 font: fontName,
                 size: fontSize,
-                colorHex: colorHex
+                colorHex: colorHex,
+                mathFont: mathFont
             )
             pdfData = data
             historyStore.add(source: source, pdfData: data,
-                             fontName: fontName, fontSize: fontSize, colorHex: colorHex)
+                             fontName: fontName, fontSize: fontSize,
+                             colorHex: colorHex, mathFont: mathFont)
             let elapsed = Date().timeIntervalSince(start)
             statusMessage = String(format: "Compiled in %.2fs", elapsed)
             statusIsError = false
