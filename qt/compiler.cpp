@@ -1,43 +1,52 @@
 #include "compiler.h"
 #include <QFileInfo>
 #include <QFile>
+#include <QStandardPaths>
 
-static const QStringList kCandidates = {
-    "/opt/homebrew/bin/typst",  // Apple Silicon Homebrew
-    "/usr/local/bin/typst",     // Intel Homebrew
-    "/usr/bin/typst",
-};
+// Well-known install locations per platform (fallback before PATH search).
+static QStringList typstCandidates()
+{
+    QStringList c;
+#if defined(Q_OS_MACOS) || defined(Q_OS_MAC)
+    c << "/opt/homebrew/bin/typst"   // Apple Silicon Homebrew
+      << "/usr/local/bin/typst"      // Intel Homebrew
+      << "/usr/bin/typst";
+    if (const char *h = qgetenv("HOME"))
+        c << QString(h) + "/.cargo/bin/typst";
+#elif defined(Q_OS_WIN)
+    if (const char *lad = qgetenv("LOCALAPPDATA"))
+        c << QString(lad) + "\\Programs\\typst\\typst.exe";
+    if (const char *up = qgetenv("USERPROFILE"))
+        c << QString(up) + "\\.cargo\\bin\\typst.exe";
+#else // Linux / other Unix
+    c << "/usr/bin/typst"
+      << "/usr/local/bin/typst";
+    if (const char *h = qgetenv("HOME"))
+        c << QString(h) + "/.cargo/bin/typst";
+#endif
+    return c;
+}
 
 Compiler::Compiler(QObject *parent) : QObject(parent) {}
 
 void Compiler::findTypst()
 {
-    for (const QString &path : kCandidates) {
+    // 1. Check well-known paths
+    for (const QString &path : typstCandidates()) {
         if (QFileInfo(path).isExecutable()) {
             m_typstPath = path;
             emit availabilityChecked(true);
             return;
         }
     }
-    // Fall back to `which typst` for custom installs / terminal launches
-    m_process = new QProcess(this);
-    connect(m_process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, &Compiler::onFindFinished);
-    m_process->start("/usr/bin/env", {"which", "typst"});
-}
-
-void Compiler::onFindFinished(int exitCode, QProcess::ExitStatus)
-{
-    QString path = QString::fromUtf8(m_process->readAllStandardOutput()).trimmed();
-    m_process->deleteLater();
-    m_process = nullptr;
-
-    if (exitCode == 0 && !path.isEmpty()) {
-        m_typstPath = path;
+    // 2. Search PATH (cross-platform, no subprocess needed)
+    QString found = QStandardPaths::findExecutable("typst");
+    if (!found.isEmpty()) {
+        m_typstPath = found;
         emit availabilityChecked(true);
-    } else {
-        emit availabilityChecked(false);
+        return;
     }
+    emit availabilityChecked(false);
 }
 
 void Compiler::compile(const QString &wrappedSource, const QString &workspacePath,

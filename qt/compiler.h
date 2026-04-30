@@ -21,7 +21,6 @@ signals:
     void compileFailed(QString errorMessage);
 
 private slots:
-    void onFindFinished(int exitCode, QProcess::ExitStatus);
     void onCompileFinished(int exitCode, QProcess::ExitStatus);
 
 private:

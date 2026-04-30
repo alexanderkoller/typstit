@@ -1,0 +1,211 @@
+name: Build
+
+on:
+  push:
+    branches: ["main"]
+    tags: ["v*"]
+    paths: ["qt/**"]
+  pull_request:
+    branches: ["main"]
+    paths: ["qt/**"]
+  workflow_dispatch:
+
+jobs:
+  # ── macOS (arm64) ────────────────────────────────────────────────────────────
+  build-macos:
+    name: macOS (arm64)
+    runs-on: macos-14
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.7.3"
+          target: desktop
+          arch: clang_64
+          modules: qtpdf
+
+      - name: Configure
+        run: cmake -S qt -B qt/build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build qt/build --config Release
+
+      - name: Bundle (macdeployqt → DMG)
+        run: |
+          MACDEPLOYQT="$QT_ROOT_DIR/bin/macdeployqt"
+          "$MACDEPLOYQT" qt/build/typstit.app -dmg
+          mv qt/build/typstit.dmg Typstit-macOS-arm64.dmg
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Typstit-macOS-arm64
+          path: Typstit-macOS-arm64.dmg
+
+  # ── Windows (x64, MSVC) ──────────────────────────────────────────────────────
+  build-windows:
+    name: Windows (x64)
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.7.3"
+          target: desktop
+          arch: win64_msvc2019_64
+          modules: qtpdf
+
+      - name: Configure
+        shell: cmd
+        run: cmake -S qt -B qt\build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        shell: cmd
+        run: cmake --build qt\build --config Release
+
+      - name: Deploy (windeployqt → zip)
+        shell: pwsh
+        run: |
+          $windeployqt = "$env:QT_ROOT_DIR\bin\windeployqt.exe"
+          & $windeployqt --release --no-translations `
+            qt\build\Release\typstit.exe
+          # Gather everything windeployqt placed next to the exe
+          Compress-Archive -Path qt\build\Release\* `
+            -DestinationPath Typstit-Windows-x64.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Typstit-Windows-x64
+          path: Typstit-Windows-x64.zip
+
+  # ── Linux (x86_64) ───────────────────────────────────────────────────────────
+  build-linux:
+    name: Linux (x86_64)
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends \
+            libgl1-mesa-dev libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 \
+            libxcb-shape0 libxcb-xinerama0 libxkbcommon-x11-0 \
+            libfontconfig1-dev libfreetype-dev fuse libfuse2
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.7.3"
+          target: desktop
+          arch: gcc_64
+          modules: qtpdf
+
+      - name: Configure
+        run: cmake -S qt -B qt/build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build qt/build --config Release
+
+      - name: Create AppImage
+        run: |
+          # Fetch linuxdeploy + Qt plugin
+          wget -q "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
+          wget -q "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage"
+          chmod +x linuxdeploy*.AppImage
+
+          # Desktop entry
+          cat > typstit.desktop <<'EOF'
+          [Desktop Entry]
+          Name=Typstit
+          Comment=Typst snippet renderer
+          Exec=typstit
+          Icon=typstit
+          Type=Application
+          Categories=Utility;Education;
+          EOF
+
+          # Icon (256×256 PNG from the repo)
+          cp Typstit.iconset/icon_256x256.png typstit.png
+
+          # Build AppImage (extract-and-run avoids FUSE requirement in CI)
+          APPIMAGE_EXTRACT_AND_RUN=1 \
+          QMAKE="$QT_ROOT_DIR/bin/qmake" \
+          EXTRA_QT_PLUGINS="pdf" \
+          ./linuxdeploy-x86_64.AppImage \
+            --appdir AppDir \
+            --executable qt/build/typstit \
+            --desktop-file typstit.desktop \
+            --icon-file typstit.png \
+            --plugin qt \
+            --output appimage
+
+          # Rename to a deterministic filename
+          mv Typstit*.AppImage Typstit-Linux-x86_64.AppImage
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Typstit-Linux-x86_64
+          path: Typstit-Linux-x86_64.AppImage
+
+  # ── Swift / macOS (arm64, tags only) ─────────────────────────────────────────
+  build-swift-macos:
+    name: macOS Swift (arm64)
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: macos-14
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          sed -i '' "s/^VERSION=\".*\"/VERSION=\"$TAG\"/" build-app.sh
+          bash build-app.sh
+
+      - name: Package as DMG
+        run: |
+          hdiutil create -volname "Typstit" \
+            -srcfolder Typstit.app \
+            -ov -format UDZO \
+            Typstit-Swift-macOS-arm64.dmg
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Typstit-Swift-macOS-arm64
+          path: Typstit-Swift-macOS-arm64.dmg
+
+  # ── GitHub Release (tags only) ───────────────────────────────────────────────
+  release:
+    name: Publish release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-macos, build-windows, build-linux, build-swift-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/Typstit-macOS-arm64/Typstit-macOS-arm64.dmg
+            dist/Typstit-Windows-x64/Typstit-Windows-x64.zip
+            dist/Typstit-Linux-x86_64/Typstit-Linux-x86_64.AppImage
+            dist/Typstit-Swift-macOS-arm64/Typstit-Swift-macOS-arm64.dmg
+          generate_release_notes: true

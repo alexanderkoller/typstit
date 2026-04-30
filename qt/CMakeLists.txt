@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
-project(Typstit VERSION 0.1.0 LANGUAGES CXX OBJCXX)
+
+# OBJCXX (Objective-C++) is only available on Apple platforms.
+if(APPLE)
+    project(Typstit VERSION 0.1.0 LANGUAGES CXX OBJCXX)
+else()
+    project(Typstit VERSION 0.1.0 LANGUAGES CXX)
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -19,13 +25,20 @@ qt_add_executable(typstit
     highlighter.cpp
     highlighter.h
     preamble.h
-    clipboard_mac.h
-    clipboard_mac.mm
     history.cpp
     history.h
     historywindow.cpp
     historywindow.h
+    clipboard_mac.h
 )
+
+# Platform-specific clipboard implementation
+if(APPLE)
+    target_sources(typstit PRIVATE clipboard_mac.mm)
+    target_link_libraries(typstit PRIVATE "-framework AppKit")
+else()
+    target_sources(typstit PRIVATE clipboard_stub.cpp)
+endif()
 
 qt_add_resources(typstit "app_resources"
     PREFIX "/"
@@ -41,9 +54,6 @@ target_link_libraries(typstit PRIVATE
 )
 
 if(APPLE)
-    target_link_libraries(typstit PRIVATE "-framework AppKit")
-
-    # ── Deployment target ────────────────────────────────────────────────────
     # `cmake --build build --target deploy` produces a self-contained
     # Typstit.dmg with all Qt frameworks and plugins bundled inside the .app.
     find_program(MACDEPLOYQT macdeployqt
@@ -54,7 +64,6 @@ if(APPLE)
             COMMAND "${MACDEPLOYQT}"
                     "$<TARGET_BUNDLE_DIR:typstit>"
                     -dmg
-                    -hardened-runtime
             DEPENDS typstit
             WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
             COMMENT "Bundling Qt frameworks and creating Typstit.dmg..."
