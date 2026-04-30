@@ -1,6 +1,8 @@
 #include "previewwidget.h"
 
+#include <algorithm>
 #include <QPdfDocument>
+#include <QRectF>
 #include <QPainter>
 #include <QMouseEvent>
 #include <QDrag>
@@ -32,12 +34,38 @@ void PreviewWidget::refresh()
     update();
 }
 
+// Scan a rendered PDF image for the bounding box of non-white (formula) pixels.
+// Returns a rect in PHYSICAL pixel coordinates, with `pad` pixels of slack.
+static QRect findContentBounds(const QImage &img, int pad = 10)
+{
+    int W = img.width(), H = img.height();
+    int x0 = W, x1 = -1, y0 = H, y1 = -1;
+    for (int y = 0; y < H; ++y) {
+        const QRgb *row = reinterpret_cast<const QRgb *>(img.constScanLine(y));
+        for (int x = 0; x < W; ++x) {
+            QRgb c = row[x];
+            // Treat fully-transparent or near-white pixels as background
+            if (qAlpha(c) < 10) continue;
+            if (qRed(c) >= 248 && qGreen(c) >= 248 && qBlue(c) >= 248) continue;
+            if (x < x0) x0 = x;
+            if (x > x1) x1 = x;
+            if (y < y0) y0 = y;
+            if (y > y1) y1 = y;
+        }
+    }
+    if (x1 < 0) return {};   // no formula pixels found — fall back
+    return QRect(qMax(0, x0 - pad), qMax(0, y0 - pad),
+                 qMin(W, x1 + 1 + 2*pad) - qMax(0, x0 - pad),
+                 qMin(H, y1 + 1 + 2*pad) - qMax(0, y0 - pad));
+}
+
 void PreviewWidget::renderPage()
 {
-    m_pageImage = {};
+    m_pageImage   = {};
+    m_contentRect = {};
     if (!m_doc || m_doc->pageCount() == 0) return;
 
-    const int padding = 48;
+    const int padding = 20;
     int availW = width()  - padding * 2;
     int availH = height() - padding * 2;
     if (availW < 10 || availH < 10) return;
@@ -45,9 +73,11 @@ void PreviewWidget::renderPage()
     QSizeF pageSize = m_doc->pagePointSize(0);
     if (pageSize.isEmpty()) return;
 
-    double scale = qMin((double)availW / pageSize.width(),
-                        (double)availH / pageSize.height());
-    scale = qMin(scale, 3.0);
+    // Match Swift DraggablePDFView exactly: scale to fit with 20pt padding,
+    // capped at 1.0 so the snippet never inflates beyond its natural PDF size.
+    double scale = std::min({(double)availW / pageSize.width(),
+                              (double)availH / pageSize.height(),
+                              1.0});
 
     // Render at device pixel ratio for crisp Retina output
     qreal dpr = devicePixelRatioF();
@@ -56,6 +86,14 @@ void PreviewWidget::renderPage()
 
     m_pageImage = m_doc->render(0, renderSize);
     m_pageImage.setDevicePixelRatio(dpr);
+
+    // Compute tight content bounds to correct for preamble whitespace.
+    // Store as logical-pixel rect so paintEvent can center just the formula.
+    QRect phys = findContentBounds(m_pageImage);
+    if (phys.isValid()) {
+        m_contentRect = QRectF(phys.x() / dpr, phys.y() / dpr,
+                               phys.width() / dpr, phys.height() / dpr);
+    }
 }
 
 void PreviewWidget::paintEvent(QPaintEvent *)
@@ -66,22 +104,24 @@ void PreviewWidget::paintEvent(QPaintEvent *)
     if (m_pageImage.isNull()) renderPage();
     if (m_pageImage.isNull()) return;
 
-    // Center the page image (logical pixels)
-    int imgW = qRound(m_pageImage.width()  / devicePixelRatioF());
-    int imgH = qRound(m_pageImage.height() / devicePixelRatioF());
-    int x = (width()  - imgW) / 2;
-    int y = (height() - imgH) / 2;
+    qreal dpr = devicePixelRatioF();
 
-    painter.drawImage(QPoint(x, y), m_pageImage);
-
-    // Drag hint
-    QFont hintFont = font();
-    hintFont.setPointSize(9);
-    painter.setFont(hintFont);
-    painter.setPen(QColor(0, 0, 0, 70));
-    painter.drawText(rect().adjusted(0, 0, 0, -7),
-                     Qt::AlignBottom | Qt::AlignHCenter,
-                     "drag to paste into another app");
+    if (m_contentRect.isValid()) {
+        // Center just the formula content (ignoring preamble whitespace margins).
+        int cx = qRound((width()  - m_contentRect.width())  / 2.0);
+        int cy = qRound((height() - m_contentRect.height()) / 2.0);
+        // Source rect in physical pixels, destination in logical pixels
+        QRectF src(m_contentRect.x() * dpr, m_contentRect.y() * dpr,
+                   m_contentRect.width() * dpr, m_contentRect.height() * dpr);
+        painter.drawImage(QRectF(cx, cy, m_contentRect.width(), m_contentRect.height()),
+                          m_pageImage, src);
+    } else {
+        // Fallback: center the whole page image
+        int imgW = qRound(m_pageImage.width()  / dpr);
+        int imgH = qRound(m_pageImage.height() / dpr);
+        painter.drawImage(QRectF((width()-imgW)/2.0, (height()-imgH)/2.0, imgW, imgH),
+                          m_pageImage, QRectF(m_pageImage.rect()));
+    }
 }
 
 void PreviewWidget::resizeEvent(QResizeEvent *event)

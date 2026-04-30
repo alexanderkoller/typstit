@@ -25,6 +25,7 @@ private:
     QPdfDocument *m_doc;
     QString       m_tempFilePath;
     QImage        m_pageImage;
+    QRectF        m_contentRect;  // logical-pixel bounds of formula within m_pageImage
     QPoint        m_dragStart;
     bool          m_armed = false;
 

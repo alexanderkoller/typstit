@@ -2,10 +2,11 @@
 #include <QDialog>
 #include "history.h"
 
-class QListWidget;
-class QListWidgetItem;
-class QStackedWidget;
+class QScrollArea;
+class QWidget;
 class QPushButton;
+class QStackedWidget;
+class QGridLayout;
 
 class HistoryWindow : public QDialog
 {
@@ -18,13 +19,11 @@ signals:
     void restoreAndCompileRequested(HistoryEntry entry);
 
 private:
-    HistoryStore  *m_store;
-    QListWidget   *m_list;
+    HistoryStore   *m_store;
     QStackedWidget *m_stack;
-    QPushButton   *m_clearBtn;
+    QWidget        *m_gridWidget;
+    QGridLayout    *m_gridLayout;
+    QPushButton    *m_clearBtn;
 
     void rebuild();
-    void loadThumbnailAsync(int row, const QString &id);
-    void showContextMenu(const QPoint &globalPos, QListWidgetItem *item);
-    HistoryEntry entryForItem(QListWidgetItem *item) const;
 };

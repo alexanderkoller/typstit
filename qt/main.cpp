@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
     app.setOrganizationDomain("typstit.com");
 
     MainWindow w;
-    w.resize(900, 700);
+    w.resize(720, 560);
     w.show();
     return app.exec();
 }
